@@ -51,6 +51,7 @@
         "regex": "^/[^.]*$",
         "destination": "/index.html"
       }
+    ]
     }
   ]
 }
