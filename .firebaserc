@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "pristine-valve-494109-e9"
+  },
+  "targets": {
+    "pristine-valve-494109-e9": {
+      "hosting": {
+        "marketing": [
+          "everpoint-marketing"
+        ]
+      }
+    }
+  }
+}
