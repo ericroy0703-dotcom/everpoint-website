@@ -1,6 +1,6 @@
 export const ROOT_DOMAIN = "everpoint.ca";
 
-export const PORTAL_LOGIN_URL = "https://portal.everpoint.ca?mode=login";
+export const PORTAL_LOGIN_URL = "https://portal.everpoint.ca/portal?mode=login";
 
 const PRODUCT_HOSTS = {
   everflow: "https://everflow.everpoint.ca",
