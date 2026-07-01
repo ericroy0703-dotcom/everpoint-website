@@ -1,0 +1,57 @@
+# Cloud Build — build Docker image and deploy EverPoint marketing site to Cloud Run.
+# GCP project: pristine-valve-494109-e9
+# Serves everpoint.ca / www.everpoint.ca via the shared HTTPS load balancer.
+
+substitutions:
+  _REGION: northamerica-northeast2
+  _SERVICE: everpoint-marketing-web
+  _REPO: everpoint
+  _IMAGE: everpoint-marketing-web
+  _VITE_SHOW_APP_ACCESS: "1"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s'
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-build'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$BUILD_ID'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:latest'
+      - '--build-arg'
+      - 'VITE_SHOW_APP_ACCESS=${_VITE_SHOW_APP_ACCESS}'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'docker-push'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}'
+    waitFor: ['docker-build']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'cloud-run-deploy'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_IMAGE}:$BUILD_ID'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--service-account=everpoint-web-run@$PROJECT_ID.iam.gserviceaccount.com'
+      - '--cpu=1'
+      - '--memory=512Mi'
+      - '--min-instances=0'
+      - '--max-instances=20'
+      - '--concurrency=80'
+      - '--port=8080'
+      - '--quiet'
+    waitFor: ['docker-push']

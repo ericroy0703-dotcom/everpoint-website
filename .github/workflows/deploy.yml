@@ -1,4 +1,4 @@
-name: Deploy marketing site to Firebase Hosting
+name: Deploy marketing site to Cloud Run
 
 on:
   push:
@@ -15,22 +15,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
       - id: auth
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/859729860141/locations/global/workloadIdentityPools/github-pool/providers/my-github-provider
           service_account: github-deployer@pristine-valve-494109-e9.iam.gserviceaccount.com
 
-      - name: Deploy to everpoint-marketing
-        run: npx firebase-tools deploy --only hosting:marketing --project pristine-valve-494109-e9 --non-interactive
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: pristine-valve-494109-e9
+
+      - name: Enable APIs and Artifact Registry
+        run: |
+          gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com --quiet
+          gcloud artifacts repositories describe everpoint --location=northamerica-northeast2 >/dev/null 2>&1 || \
+            gcloud artifacts repositories create everpoint \
+              --repository-format=docker \
+              --location=northamerica-northeast2 \
+              --description="EverPoint container images"
+
+      - name: Build and deploy to Cloud Run
+        run: |
+          gcloud builds submit \
+            --config=cloudbuild-run.yaml \
+            --substitutions=_VITE_SHOW_APP_ACCESS=1 \
+            --project=pristine-valve-494109-e9
+
+      # Serves everpoint.ca / www.everpoint.ca via the shared HTTPS load balancer
+      # (host rule "marketing-matcher" -> everpoint-marketing-backend).
